@@ -10,11 +10,15 @@ from .routers import complaints, admin
 
 app = FastAPI(title="NagrikSeva AI Backend")
 
-# Initialize SQLite database on app startup
+# Database Path Configuration (Supports Persistent Volumes via DATA_DIR)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "nagrikseva.db")
+DATA_DIR = os.getenv("DATA_DIR", BASE_DIR)
+DB_PATH = os.path.join(DATA_DIR, "nagrikseva.db")
 
 def init_db():
+    # Ensure target directory exists
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -33,9 +37,10 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Initialize DB on start
 init_db()
 
-# Enable CORS for all origins (development)
+# Enable CORS for all origins (allows Vercel frontend requests)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,6 +48,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Root status endpoint
+@app.get("/")
+def read_root():
+    return {
+        "status": "online",
+        "message": "NagrikSeva AI Backend API is running successfully!"
+    }
 
 # Include routers
 app.include_router(complaints.router, prefix="/api/complaints")
